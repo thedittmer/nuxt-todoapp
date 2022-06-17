@@ -1,35 +1,54 @@
-import {db} from '../../db'
+import { db } from "../../db";
+import { sendError } from "h3";
 
 export default defineEventHandler((e) => {
-    const method = e.req.method
-    const context = e.context
+  const method = e.req.method;
+  const context = e.context;
+  const { id } = context.params;
 
-    if(method === "PUT") {
-        // 1) Extract the path parameter
-        const {id} = context.params
+  const findTodoById = (todoId) => {
+    let index;
+    const todo = db.todos.find((t, i) => {
+      if (t.id === todoId) {
+        index = i;
+        return true;
+      }
+      return false;
+    });
 
-        // 2) Find todo in db
-        let index
-        const todo = db.todos.find((t, i) => {
-            if (t.id === id) {
-                index = i
-                return true
-            }
-            return false
-        })
-        
-        // 3) Throw error if todo is not found
-        if(!todo) throw new Error()
+    if (!todo) {
+      const TodoNotFoundError = createError({
+        statusCode: 404,
+        statusMessage: "Todo not found",
+        data: {},
+      });
 
-        // 4) Update the completed status
-        const updateTodo = {
-            ...todo,
-            completed: !todo.completed
-        }
-        db.todos[index] = updateTodo
-
-        // 5) Return the udpated todo
-        return updateTodo
-
+      sendError(e, TodoNotFoundError);
     }
-})
+
+    return { todo, index };
+  };
+
+  if (method === "PUT") {
+    const { todo, index } = findTodoById(id);
+
+    const updateTodo = {
+      ...todo,
+      completed: !todo.completed,
+    };
+
+    db.todos[index] = updateTodo;
+
+    return updateTodo;
+  }
+
+  if (method === "DELETE") {
+    const { index } = findTodoById(id);
+
+    db.todos.splice(index, 1);
+
+    return {
+      message: "item deleted",
+    };
+  }
+});
