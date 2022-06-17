@@ -1,5 +1,8 @@
+<script setup lang="ts">
+const { data } = useFetch('/api/todo')
+</script>
 <template>
   <div>
-    <NuxtWelcome />
+    {{ data }}
   </div>
 </template>
